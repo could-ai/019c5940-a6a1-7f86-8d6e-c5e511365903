@@ -11,13 +11,116 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _uploadedImages = [];
   bool _isAnalyzing = false;
 
-  void _pickImage() {
-    // Simulate image picking
-    if (_uploadedImages.length < 4) {
-      setState(() {
-        _uploadedImages.add('assets/placeholder_base_${_uploadedImages.length + 1}.jpg');
-      });
+  // Pre-defined mock images for simulation
+  final List<String> _mockImages = [
+    'https://rustlabs.com/img/items180/wall.frame.garagedoor.png',
+    'https://rustlabs.com/img/items180/wall.external.high.stone.png',
+    'https://rustlabs.com/img/items180/door.hinged.metal.png',
+    'https://rustlabs.com/img/items180/wall.window.glass.reinforced.png',
+  ];
+
+  void _showAddImageOptions() {
+    if (_uploadedImages.length >= 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum of 4 images allowed.')),
+      );
+      return;
     }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C2C2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFFCE422B)),
+                title: const Text('Take Photo (Simulated)', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addMockImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFFCE422B)),
+                title: const Text('Choose from Gallery (Simulated)', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addMockImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link, color: Color(0xFFCE422B)),
+                title: const Text('Paste Image URL', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showUrlInputDialog();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _addMockImage() {
+    setState(() {
+      // Cycle through mock images or use a generic placeholder
+      int index = _uploadedImages.length % _mockImages.length;
+      _uploadedImages.add(_mockImages[index]);
+    });
+  }
+
+  void _showUrlInputDialog() {
+    final TextEditingController urlController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2C2C2C),
+          title: const Text('Paste Image URL', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: urlController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'https://example.com/image.jpg',
+              hintStyle: TextStyle(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFCE422B))),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                if (urlController.text.isNotEmpty) {
+                  setState(() {
+                    _uploadedImages.add(urlController.text);
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Add', style: TextStyle(color: Color(0xFFCE422B))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _clearImages() {
+    setState(() {
+      _uploadedImages.clear();
+    });
   }
 
   void _analyzeBase() async {
@@ -33,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // Simulate AI Analysis Delay
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
@@ -65,6 +168,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: _uploadedImages.length < 4
+          ? FloatingActionButton.extended(
+              onPressed: _showAddImageOptions,
+              icon: const Icon(Icons.add_a_photo),
+              label: const Text('Add Photo'),
+              backgroundColor: const Color(0xFFCE422B),
+              foregroundColor: Colors.white,
+            )
+          : null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -77,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildActionButtons(),
             const SizedBox(height: 40),
             _buildFeaturesList(),
+            const SizedBox(height: 80), // Space for FAB
           ],
         ),
       ),
@@ -123,22 +236,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Upload Progress',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              Text(
-                '${(progress * 100).toInt()}%',
-                style: const TextStyle(
-                  color: Color(0xFFCE422B),
-                  fontWeight: FontWeight.bold,
+              if (_uploadedImages.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _clearImages,
+                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.grey),
+                  label: const Text('Clear', style: TextStyle(color: Colors.grey)),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
           LinearProgressIndicator(
             value: progress,
             backgroundColor: Colors.grey[800],
             color: const Color(0xFFCE422B),
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 5),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '${_uploadedImages.length}/4 Images',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
           ),
           const SizedBox(height: 20),
           GridView.builder(
@@ -153,47 +274,50 @@ class _HomeScreenState extends State<HomeScreen> {
             itemCount: 4,
             itemBuilder: (context, index) {
               if (index < _uploadedImages.length) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(8),
-                    image: const DecorationImage(
-                      image: NetworkImage('https://placehold.co/600x400/png?text=Base+Image'), // Placeholder
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: 4,
-                        top: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.check, size: 16, color: Colors.green),
+                return Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                        image: DecorationImage(
+                          image: NetworkImage(_uploadedImages[index]),
+                          fit: BoxFit.cover,
+                          onError: (exception, stackTrace) {
+                            // Fallback if image fails to load
+                          },
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      right: 4,
+                      top: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, size: 16, color: Colors.green),
+                      ),
+                    ),
+                  ],
                 );
               } else {
                 return GestureDetector(
-                  onTap: _pickImage,
+                  onTap: _showAddImageOptions,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.grey[900],
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[700]!, style: BorderStyle.solid),
+                      border: Border.all(color: Colors.grey[700]!, style: BorderStyle.dashed),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.add_a_photo, color: Colors.grey),
+                        Icon(Icons.add_circle_outline, color: Colors.grey, size: 30),
                         SizedBox(height: 8),
-                        Text('Add Photo', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text('Tap to Add', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ),
